@@ -36,8 +36,14 @@ class ZulipPlugin extends Plugin {
             return;
         }
 
-        // Convert any HTML in the message into text
-        $plaintext = Format::html2text($ticket->getMessages()[0]->getBody()->getClean());
+	// Convert any HTML in the message into text
+	// If this is a custom form submission, getMessages will be empty, so check for valid contents
+	if(is_null($ticket->getMessages()[0]))
+	{
+		$plaintext = "";
+	} else {
+		$plaintext = Format::html2text($ticket->getMessages()[0]->getBody()->getClean());
+	}
 
         // Format the messages we'll send.
         $heading = sprintf('%s CONTROLSTART%sscp/tickets.php?id=%d|#%sCONTROLEND %s'
@@ -46,7 +52,7 @@ class ZulipPlugin extends Plugin {
                 , $ticket->getId()
                 , $ticket->getNumber()
                 , __("created"));
-        $this->sendToZulip($ticket, $heading, $plaintext);
+	$this->sendToZulip($ticket, $heading, $plaintext);
     }
 
     /**
