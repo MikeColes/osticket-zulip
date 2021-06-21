@@ -38,6 +38,7 @@ class ZulipPluginConfig extends PluginConfig {
                     )),
             'zulip-webhook-url'          => new TextboxField(array(
                 'label'         => $__('Webhook URL'),
+                'hint'  => $__('Endpoint for the slack bot, likely https://[your domain]/api/v1/external/slack '),
                 'configuration' => array(
                     'size'   => 100,
                     'length' => 200
@@ -56,6 +57,11 @@ class ZulipPluginConfig extends PluginConfig {
             'zulip-stream'             => new TextboxField(array(
                 'label' => $__('Zulip Stream'),
                 'hint'  => $__('Stream to send the messages'),
+                'configuration' => array( 'size' => 100, 'length' => 200),
+            )),
+            'zulip-channel'             => new TextboxField(array(
+                'label' => $__('Zulip Channel'),
+                'hint'  => $__('Channel in the stream to send the messages'),
                 'configuration' => array( 'size' => 100, 'length' => 200),
             )),
                             

@@ -20,7 +20,6 @@ class ZulipPlugin extends Plugin {
         // an existing ticket:
         Signal::connect('ticket.created', array($this, 'onTicketCreated'));
         Signal::connect('threadentry.created', array($this, 'onTicketUpdated'));
-        // Tasks? Signal::connect('task.created',array($this,'onTaskCreated'));
     }
 
     /**
@@ -37,8 +36,14 @@ class ZulipPlugin extends Plugin {
             return;
         }
 
-        // Convert any HTML in the message into text
-        $plaintext = Format::html2text($ticket->getMessages()[0]->getBody()->getClean());
+	// Convert any HTML in the message into text
+	// If this is a custom form submission, getMessages will be empty, so check for valid contents
+	if(is_null($ticket->getMessages()[0]))
+	{
+		$plaintext = "";
+	} else {
+		$plaintext = Format::html2text($ticket->getMessages()[0]->getBody()->getClean());
+	}
 
         // Format the messages we'll send.
         $heading = sprintf('%s CONTROLSTART%sscp/tickets.php?id=%d|#%sCONTROLEND %s'
@@ -47,7 +52,7 @@ class ZulipPlugin extends Plugin {
                 , $ticket->getId()
                 , $ticket->getNumber()
                 , __("created"));
-        $this->sendToZulip($ticket, $heading, $plaintext);
+	$this->sendToZulip($ticket, $heading, $plaintext);
     }
 
     /**
@@ -136,50 +141,22 @@ class ZulipPlugin extends Plugin {
         $formatted_message = $ticket->replaceVars($template, $custom_vars);
 
         // Build the payload with the formatted data:
-//        $payload['attachments'][0] = [
         $payload = array (
-            'type'        => 'stream',
-            'to'          => $this->getConfig()->get('zulip-stream'),
-            'subject'     => $ticket->getNumber(). " - ". $ticket->getSubject(),
-//            'title_link'  => $cfg->getUrl() . 'scp/tickets.php?id=' . $ticket->getId(),
-            'content'       => "[#".$ticket->getNumber()."](". $cfg->getUrl() . 'scp/tickets.php?id=' . $ticket->getId(). ")  ". $formatted_message,  
-            //'ts'          => time(),
-            //'footer'      => 'via osTicket Zulip Plugin',
-            //'footer_icon' => 'https://platform.slack-edge.com/img/default_application_icon.png',
-            //'text'        => $formatted_message,
-            //'mrkdwn_in'   => ["text"]
-//      ];            
+	    'api_key'       => $this->getConfig()->get('zulip-api-token'),
+	    'user_name'     => $this->getConfig()->get('zulip-user'),
+            'stream'        => $this->getConfig()->get('zulip-stream'),
+            'channel_name'  => $this->getConfig()->get('zulip-channel'),
+            'text'          => $ticket->getNumber(). " - ". $ticket->getSubject()." [#".$ticket->getNumber()."](". $cfg->getUrl() . 'scp/tickets.php?id=' . $ticket->getId(). ")  ". $formatted_message ,  
         );
-        // Add a field for tasks if there are open ones
-//        if ($ticket->getNumOpenTasks()) {
-//        $payload['attachments'][0]['fields'][] = [
-//                'title' => __('Open Tasks'),
-//                'value' => $ticket->getNumOpenTasks(),
-//                'short' => TRUE,
-//            ];
-//        }
-        // Change the colour to Fuschia if ticket is overdue
-//        if ($ticket->isOverdue()) {
-//            $payload['attachments'][0]['colour'] = '#ff00ff';
-//        }
 
-        // Format the payload:
-//        $data_string = utf8_encode(json_encode($payload));
-
-        try {
+	try {
             // Setup curl
             $ch = curl_init($url);
-            curl_setopt($ch, CURLOPT_USERPWD, $this->getConfig()->get('zulip-user').":".$this->getConfig()->get('zulip-api-token'));
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-//            curl_setopt($ch, CURLOPT_POSTFIELDS, $data_string);
             curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-//            curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-//                'Content-Type: application/json',
-//                'Content-Length: ' . strlen($payload))
-//            );
 
-            // Actually send the payload to zulip:
+            // Send the payload to zulip:
             if (curl_exec($ch) === false) {
                 throw new \Exception($url . ' - ' . curl_error($ch));
             } else {
